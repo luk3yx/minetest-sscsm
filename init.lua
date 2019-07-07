@@ -43,7 +43,7 @@ local function recalc_csm_order()
     end
     while #not_loaded > 0 do
         local def = not_loaded[1]
-        g = not def.depends or #def.depends == 0
+        local g = not def.depends or #def.depends == 0
         if not g then
             g = true
             for _, mod in ipairs(def.depends) do
@@ -169,7 +169,7 @@ minetest.after(1, function()
         sscsm.register({
             name = 'sscsm:badtest',
             code = 'error("Oops, badtest loaded!")',
-            depends = {':init', ':cleanup', ':no'}
+            depends = {':init', ':cleanup', 'bad_mod'}
         })
     end
 end)

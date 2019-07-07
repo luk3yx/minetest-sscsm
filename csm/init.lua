@@ -236,7 +236,7 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
 
     -- Don't load the same SSCSM twice
     if not loaded_sscsms[name] then
-        print('Loading ' .. name)
+        minetest.log('action', '[SSCSM] Loading ' .. name)
         loaded_sscsms[name] = true
         sscsm.env:exec(code)
     end
