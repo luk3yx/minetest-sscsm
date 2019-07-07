@@ -1,0 +1,62 @@
+--
+-- SSCSM: Server-Sent Client-Side Mods proof-of-concept
+-- Testing code
+--
+-- © 2019 by luk3yx
+--
+
+-- Make sure the minifier is sane
+a = 0
+--[[
+a = a + 1
+--]]
+
+-- [[
+a = a + 2
+--]]
+
+--;a = a + 4
+
+a = a + #('Test    message with \'"quotes"\'   .')
+
+assert(a == 37, 'The minifier is breaking code!')
+
+-- Create a few chatcommands
+sscsm.register_chatcommand('error_test', function(param)
+    error('Testing: ' .. param)
+end)
+
+sscsm.register_chatcommand('sscsm', {
+    func = function(param)
+        return true, 'Hello from the SSCSM!'
+    end,
+})
+
+sscsm.register_chatcommand('slap', function(param)
+    if param:gsub(' ', '') == '' then
+        return false, 'Invalid usage. Usage: ' .. minetest.colorize('#00ffff',
+            '/slap <victim>') .. '.'
+    end
+
+    minetest.run_server_chatcommand('me', 'slaps ' .. param ..
+        ' around a bit with a large trout.')
+end)
+
+-- A potentially useful example
+sscsm.register_chatcommand('msg', function(param)
+    -- If you're actually using this, remove this.
+    assert(param ~= '<error>', 'Test')
+
+    local sendto, msg = param:match('^(%S+)%s(.+)$')
+    if not sendto then
+        return false, 'Invalid usage, see ' .. minetest.colorize('#00ffff',
+            '/help msg') .. '.'
+    end
+
+    minetest.run_server_chatcommand('msg', param)
+end)
+
+-- Create yay() to test dependencies
+function yay()
+    print('yay() called')
+end
