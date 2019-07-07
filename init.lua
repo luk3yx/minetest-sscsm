@@ -28,7 +28,6 @@ end
 
 -- Register code
 sscsm.registered_csms = {}
-initial_code = nil
 local csm_order = false
 
 -- Recalculate the CSM loading order
