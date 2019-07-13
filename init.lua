@@ -33,38 +33,51 @@ local csm_order = false
 -- Recalculate the CSM loading order
 -- TODO: Make this nicer
 local function recalc_csm_order()
-    local loaded = {[':init'] = true, [':cleanup'] = true}
-    local not_loaded = {}
+    local loaded = {}
+    local staging = {}
     local order = {':init'}
-    for k, v in pairs(sscsm.registered_csms) do
-        if k:sub(1, 1) ~= ':' then
-            table.insert(not_loaded, v)
+    local unsatisfied = {}
+    for name, def in pairs(sscsm.registered_csms) do
+        assert(name == def.name)
+        if name:sub(1, 1) == ':' then
+            loaded[name] = true
+        elseif not def.depends or #def.depends == 0 then
+            loaded[name] = true
+            table.insert(staging, name)
+        else
+            unsatisfied[name] = {}
+            for _, mod in ipairs(def.depends) do
+                if mod:sub(1, 1) ~= ':' then
+                    unsatisfied[name][mod] = true
+                end
+            end
         end
     end
-    while #not_loaded > 0 do
-        local def = not_loaded[1]
-        local g = not def.depends or #def.depends == 0
-        if not g then
-            g = true
-            for _, mod in ipairs(def.depends) do
-                if not sscsm.registered_csms[mod] then
-                    minetest.log('error', '[SSCSM] SSCSM "' .. def.name ..
-                        '" has an unsatisfied dependency: ' .. mod)
-                    g = false
-                    break
-                elseif not loaded[mod] then
-                    table.insert(not_loaded, def)
-                    g = false
-                    break
+    while #staging > 0 do
+        local name = staging[1]
+        for name2, u in pairs(unsatisfied) do
+            if u[name] then
+                u[name] = nil
+                if #u == 0 then
+                    table.insert(staging, name2)
                 end
             end
         end
 
-        if g then
-            table.insert(order, def.name)
-            loaded[def.name] = true
+        table.insert(order, name)
+        table.remove(staging, 1)
+    end
+
+    for name, u in pairs(unsatisfied) do
+        if next(u) then
+            local msg = 'SSCSM "' .. name .. '" has unsatisfied dependencies: '
+            local n = false
+            for dep, _ in pairs(u) do
+                if n then msg = msg .. ', ' else n = true end
+                msg = msg .. '"' .. dep .. '"'
+            end
+            minetest.log('error', msg)
         end
-        table.remove(not_loaded, 1)
     end
 
     -- Set csm_order
@@ -157,7 +170,7 @@ minetest.after(1, function()
 
         sscsm.register({
             name = 'sscsm:testing_cmds',
-            file = modpath .. '/sscsm_testing.lua'
+            file = modpath .. '/sscsm_testing.lua',
         })
 
         sscsm.register({
@@ -169,7 +182,7 @@ minetest.after(1, function()
         sscsm.register({
             name = 'sscsm:badtest',
             code = 'error("Oops, badtest loaded!")',
-            depends = {':init', ':cleanup', 'bad_mod'}
+            depends = {':init', ':cleanup', 'bad_mod', ':bad2', 'bad3'},
         })
     end
 end)
