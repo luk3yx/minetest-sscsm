@@ -162,19 +162,39 @@ base_env:set_copy('os', {clock = os.clock, difftime = os.difftime,
 
 -- Create a slightly locked down "minetest" table
 do
-    local t = {
-        get_mod_storage = false,
-        global_exists = false,
-    }
-
-    for k, v in pairs(minetest) do
-        if safe_funcs[v] or (t[k] == nil and k:sub(1, 8) ~= 'register'
-                and k:sub(1, 10) ~= 'unregister') then
-            t[tostring(k)] = v
-        elseif t[k] == false then
-            t[k] = nil
-        end
+    local t = {}
+    for _, k in ipairs({"add_particle", "add_particlespawner", "after",
+            "camera", "clear_out_chat_queue", "colorize", "compress", "debug",
+            "decode_base64", "decompress", "delete_particlespawner",
+            "deserialize", "disconnect", "display_chat_message",
+            "encode_base64", "explode_scrollbar_event", "explode_table_event",
+            "explode_textlist_event", "find_node_near", "formspec_escape",
+            "get_background_escape_sequence", "get_color_escape_sequence",
+            "get_day_count", "get_item_def", "get_language", "get_meta",
+            "get_node_def", "get_node_level", "get_node_max_level",
+            "get_node_or_nil", "get_player_names", "get_privilege_list",
+            "get_server_info", "get_timeofday", "get_translator",
+            "get_us_time", "get_version", "get_wielded_item", "gettext",
+            "is_nan", "is_yes", "localplayer", "log",
+            "mod_channel_join", "parse_json", "pointed_thing_to_face_pos",
+            "pos_to_string", "privs_to_string", "register_globalstep",
+            "register_on_damage_taken", "register_on_death",
+            "register_on_dignode", "register_on_formspec_input",
+            "register_on_hp_modification", "register_on_inventory_open",
+            "register_on_item_use", "register_on_modchannel_message",
+            "register_on_modchannel_signal", "register_on_placenode",
+            "register_on_punchnode", "register_on_receiving_chat_message",
+            "register_on_sending_chat_message", "rgba",
+            "run_server_chatcommand", "send_chat_message", "send_respawn",
+            "serialize", "set_last_run_mod", "sha1", "show_formspec",
+            "sound_play", "sound_stop", "string_to_area", "string_to_pos",
+            "string_to_privs", "strip_background_colors", "strip_colors",
+            "strip_foreground_colors", "translate", "ui", "wrap_text",
+            "write_json"}) do
+        local func = minetest[k]
+        t[k] = safe_funcs[func] or func
     end
+
     base_env:set_copy('minetest', t)
 end
 

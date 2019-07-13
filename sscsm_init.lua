@@ -31,6 +31,12 @@ sscsm = {}
 function sscsm.global_exists(name)
     return rawget(_G, name) ~= nil
 end
+
+if not sscsm.global_exists('minetest') then
+    minetest = assert(core, 'No "minetest" global found!')
+end
+core = nil
+
 minetest.global_exists = sscsm.global_exists
 
 -- Check if join_mod_channel and leave_mod_channel exist.
@@ -73,6 +79,19 @@ sscsm.register_on_mods_loaded(function()
     print('SSCSMs loaded, leaving mod channel.')
     sscsm.leave_mod_channel()
 end)
+
+-- Helper functions
+if not minetest.get_node then
+    function minetest.get_node(pos)
+        return minetest.get_node_or_nil(pos) or {name = 'ignore', param1 = 0,
+            param2 = 0}
+    end
+end
+
+-- Make minetest.run_server_chatcommand allow param to be unspecified.
+function minetest.run_server_chatcommand(cmd, param)
+    minetest.send_chat_message('/' .. cmd .. ' ' .. (param or ''))
+end
 
 -- Register "server-side" chatcommands
 -- Can allow instantaneous responses in some cases.
