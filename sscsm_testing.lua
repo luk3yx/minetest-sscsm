@@ -56,6 +56,22 @@ sscsm.register_chatcommand('msg', function(param)
     minetest.run_server_chatcommand('msg', param)
 end)
 
+sscsm.register_chatcommand('privs', function(param)
+    if param == '' and minetest.get_privilege_list then
+        local privs = {}
+        for priv, n in pairs(minetest.get_privilege_list()) do
+            if n then
+                table.insert(privs, priv)
+            end
+        end
+        table.sort(privs)
+        return true, minetest.colorize('#00ffff', 'Privileges of ' ..
+            minetest.localplayer:get_name() .. ': ') .. table.concat(privs, ' ')
+    end
+
+    minetest.run_server_chatcommand('privs', param)
+end)
+
 -- Create yay() to test dependencies
 function yay()
     print('yay() called')
