@@ -422,19 +422,28 @@ local function show_default_formspec()
     end
 
     if sscsm.allowed or sscsm_queue then
-        checkbox_id = allow_id
-        while checkbox_id == allow_id or checkbox_id == deny_id or
-                checkbox_id == inspect_id do
-            checkbox_id = 'btn_' .. random_identifier()
-        end
-
         local tr = trust
         if tr == nil and sscsm.env and sscsm_queue and #sscsm_queue == 0 then
             tr = true
         end
-        formspec = formspec ..'checkbox[0,2;' .. checkbox_id ..
-            ';Permanently allow these SSCSMs.;' ..
-            (tr and 'true' or 'false') .. ']'
+
+        if tr or sscsm_queue then
+            checkbox_id = allow_id
+            while checkbox_id == allow_id or checkbox_id == deny_id or
+                    checkbox_id == inspect_id do
+                checkbox_id = 'btn_' .. random_identifier()
+            end
+
+            formspec = formspec ..'checkbox[0,2;' .. checkbox_id ..
+                ';Permanently allow these SSCSMs.;' ..
+                (tr and 'true' or 'false') .. ']'
+        else
+            checkbox_id = nil
+            formspec = formspec ..'checkbox[0,2;ignore;' ..
+                minetest.colorize('#888888',
+                    'Permanently allow these SSCSMs.') .. ';false]'
+        end
+
     else
         checkbox_id = nil
     end
