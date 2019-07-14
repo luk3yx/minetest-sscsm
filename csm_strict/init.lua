@@ -318,7 +318,6 @@ do
     end
 end
 
-local allow_id, deny_id
 local function show_default_formspec()
     local allow_text, deny_text, allowed
     if sscsm.allowed then
