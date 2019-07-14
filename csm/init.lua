@@ -265,7 +265,13 @@ end)
 -- Send "0"
 local function request_csms(c)
     c = c or 10
-    if c <= 0 then return end
+    if c <= 0 then
+        if mod_channel then
+            mod_channel:leave()
+            mod_channel = false
+        end
+        return
+    end
     if minetest.localplayer and mod_channel:is_writeable() then
         mod_channel:send_all('0')
     else
