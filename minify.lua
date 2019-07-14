@@ -8,7 +8,7 @@ return function(code)
     assert(type(code) == 'string')
 
     local res, last, ws1, ws2, escape = '', false, '\n', '\n', false
-    local sp = {['"'] = true, ["'"] = true}
+    local sp = {['"'] = true, ["'"] = true, ['['] = true}
 
     for i = 1, #code do
         local char = code:sub(i, i)
@@ -53,6 +53,13 @@ return function(code)
             escape = true
         elseif last == '"' or last == "'" then
             if char == last then last = false end
+            res = res .. char
+        elseif last == '[' then
+            if char == last then
+                last = last .. char
+            else
+                last = false
+            end
             res = res .. char
         elseif last == '-' then
             if char == '-' then
