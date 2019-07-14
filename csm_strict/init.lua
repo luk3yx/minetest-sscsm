@@ -318,7 +318,7 @@ do
         current_formname = 'sscsm:' .. random_identifier()
 
         -- Display the formspec
-        minetest.show_formspec(current_formname, spec)
+        _show_formspec(current_formname, spec)
     end
 end
 
@@ -421,8 +421,9 @@ minetest.register_on_formspec_input(function(formname, fields)
     -- Sanity check
     if not current_formname or formname ~= current_formname then return end
 
-    -- Minetest will leak the formname to the currently untrusted server after
-    --  this, so invalidate it now.
+    -- Minetest doesn't(?) leak the formname, however this is still here in
+    --  case that changes in the future (or for if the server can somehow trick
+    --  the client into leaking formspec inputs).
     current_formname = false
 
     -- Check for options
