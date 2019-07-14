@@ -223,12 +223,13 @@ base_env:set('join_mod_channel', function()
     end
 end)
 
-base_env:set('leave_mod_channel', function()
+local function leave_mod_channel()
     if mod_channel then
         mod_channel:leave()
         mod_channel = false
     end
-end)
+end
+base_env:set('leave_mod_channel', leave_mod_channel)
 
 -- Allow other CSMs to access the new Environment type
 sscsm.Env = Env
@@ -324,6 +325,7 @@ end
 
 local allow_id, deny_id, inspect_id
 local function show_default_formspec()
+    leave_mod_channel()
     local allow_text, deny_text, allowed
     if sscsm.allowed then
         deny_text  = 'Exit to menu'
@@ -383,6 +385,7 @@ local inspect_file = 1
 
 local function show_inspect_formspec()
     if not sscsm_queue then return end
+
     if not inspecting then
         inspecting = random_identifier()
         minetest.display_chat_message('[SSCSM] If the number displayed in' ..
@@ -445,10 +448,6 @@ minetest.register_on_formspec_input(function(formname, fields)
     elseif fields[deny_id] then
         if sscsm.allowed then
             minetest.disconnect()
-        end
-        if mod_channel then
-            mod_channel:leave()
-            mod_channel = false
         end
         if sscsm_queue then
             sscsm_queue = false
