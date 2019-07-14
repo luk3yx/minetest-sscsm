@@ -276,7 +276,6 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
                     '[SSCSM] This server (' .. minetest.formspec_escape(addr) ..
                     ') wants to run sandboxed code on your client. ' ..
                     'Run .sscsm to allow or deny this.'))
-                sscsm_stage = 1
                 sscsm.allowed = false
             end
             table.insert(sscsm_queue, {name=name, code=code})
@@ -307,9 +306,14 @@ local function random_identifier()
 end
 
 local secure_show_formspec, current_formname
+local inspecting = false
 do
     local _show_formspec = minetest.show_formspec
-    function secure_show_formspec(spec)
+    function secure_show_formspec(spec, preserve)
+        if preserve == nil then
+            inspecting = false
+        end
+
         -- Regenerate the formname every time.
         current_formname = 'sscsm:' .. random_identifier()
 
@@ -318,6 +322,7 @@ do
     end
 end
 
+local allow_id, deny_id, inspect_id
 local function show_default_formspec()
     local allow_text, deny_text, allowed
     if sscsm.allowed then
@@ -332,30 +337,83 @@ local function show_default_formspec()
         allowed = minetest.colorize('lightgreen', 'disabled')
     end
 
+    -- Randomly generate identifiers
+    allow_id = 'btn_' .. random_identifier()
+    deny_id = allow_id
+    while deny_id == allow_id do
+        deny_id = 'btn_' .. random_identifier()
+    end
+
     local formspec = 'size[8,4]no_prepend[]' ..
         'image_button[0,0;8,1;;ignore;SSCSM;true;false;]' ..
         'label[0,1;SSCSMs are currently ' ..
         minetest.formspec_escape(allowed) .. '.]'
 
     if allowed == 'inactive' then
-         formspec = formspec ..
-            'label[0,2;Do you want to allow this server to ' ..
-                'execute (sandboxed) code locally?]'
+        inspect_id = allow_id
+        while inspect_id == allow_id or inspect_id == deny_id do
+            inspect_id = 'btn_' .. random_identifier()
+        end
+        formspec = formspec ..
+            'label[0,1.5;Do you want to allow this server to ' ..
+                'execute (sandboxed) code locally?]' ..
+            'image_button[6,0.2;2,0.6;;' .. inspect_id ..
+                ';Inspect code;true;true;]'
     else
+        inspect_id = nil
         formspec = formspec ..
             'label[0,2;You cannot change this without reconnecting.]'
     end
 
     if allow_text and deny_text then
-         formspec = formspec .. 'button_exit[0,3;4,1;deny;' ..
+         formspec = formspec .. 'button_exit[0,3;4,1;' .. deny_id .. ';' ..
             minetest.formspec_escape(deny_text) .. ']' ..
-            'button_exit[4,3;4,1;allow;' ..
+            'button_exit[4,3;4,1;' .. allow_id .. ';' ..
             minetest.formspec_escape(allow_text) .. ']'
     else
-        formspec = formspec .. 'button_exit[0,3;8,1;deny;Close dialog]'
+        formspec = formspec .. 'button_exit[0,3;8,1;' .. deny_id
+            .. ';Close dialog]'
     end
 
     secure_show_formspec(formspec)
+end
+
+-- The inspect formspec
+local inspect_file = 1
+
+local function show_inspect_formspec()
+    if not sscsm_queue then return end
+    if not inspecting then
+        inspecting = random_identifier()
+        minetest.display_chat_message('[SSCSM] If the number displayed in' ..
+            ' the inspector changes, the server has tampered with it and ' ..
+            'you should not allow SSCSMs.')
+    end
+    inspect_id = random_identifier()
+    deny_id = inspect_id
+    while deny_id == inspect_id do deny_id = random_identifier() end
+
+    local formspec = 'size[10,9]no_prepend[]' ..
+        'label[0,0;SSCSM: Code Inspector.\n\n' ..
+        minetest.colorize('#eeeeee', 'This number should not change while ' ..
+            'the inspector is running:\n' .. tostring(inspecting)) .. ']' ..
+        'button[9,0;1,1;' .. deny_id .. ';X]' ..
+        'textlist[0,2;2,7;' .. tostring(inspect_id) .. ';'
+
+    for id, code in ipairs(sscsm_queue) do
+        if id > 1 then formspec = formspec .. ',' end
+        formspec = formspec .. '##' .. minetest.formspec_escape(code.name)
+    end
+
+    formspec = formspec .. ';' .. inspect_file .. ']' ..
+        'textarea[2.5,2;7.75,8.2;;Code:;'
+
+    if sscsm_queue[inspect_file] then
+        formspec = formspec ..
+            minetest.formspec_escape(sscsm_queue[inspect_file].code)
+    end
+
+    secure_show_formspec(formspec .. ']box[2.2,2;7.5,7;#000000]', true)
 end
 
 -- Handle formspec input
@@ -368,7 +426,22 @@ minetest.register_on_formspec_input(function(formname, fields)
     current_formname = false
 
     -- Check for options
-    if fields.deny then
+    if inspecting then
+        if fields.quit then
+            inspecting = false
+            minetest.after(0.1, show_default_formspec)
+            return true
+        elseif fields[deny_id] then
+            inspecting = false
+            show_default_formspec()
+            return true
+        elseif fields[inspect_id] then
+            local event = minetest.explode_textlist_event(fields[inspect_id])
+            if event.type == 'CHG' then inspect_file = event.index end
+        end
+
+        show_inspect_formspec()
+    elseif fields[deny_id] then
         if sscsm.allowed then
             minetest.disconnect()
         end
@@ -376,7 +449,7 @@ minetest.register_on_formspec_input(function(formname, fields)
             sscsm_queue = false
             minetest.display_chat_message('[SSCSM] SSCSMs have been denied.')
         end
-    elseif fields.allow then
+    elseif fields[allow_id] then
         if sscsm.allowed then return true end
 
         minetest.display_chat_message('[SSCSM] SSCSMs have been allowed.')
@@ -389,6 +462,9 @@ minetest.register_on_formspec_input(function(formname, fields)
             end
         end
         sscsm_queue = false
+    elseif fields[inspect_id] then
+        inspect_file = 1
+        show_inspect_formspec()
     elseif fields.quit then
         minetest.display_chat_message(minetest.colorize('#eeeeee',
             '[SSCSM] No action specified.'))
