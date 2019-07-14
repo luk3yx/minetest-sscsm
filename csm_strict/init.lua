@@ -11,6 +11,8 @@ local sscsm = {}
 --  the random seed
 math.randomseed(os.time() + math.random(2, 1200))
 
+local storage = minetest.get_mod_storage()
+
 -- Load the Env class
 -- Mostly copied from https://stackoverflow.com/a/26367080
 -- Don't copy metatables
@@ -234,6 +236,51 @@ base_env:set('leave_mod_channel', leave_mod_channel)
 -- Allow other CSMs to access the new Environment type
 sscsm.Env = Env
 
+-- Get the address
+local get_address
+do
+    local addr
+    function get_address()
+        if not addr then
+            local info = minetest.get_server_info()
+            addr = tostring(info.address)
+            if addr == '' then
+                addr = 'singleplayer'
+            else
+                addr = addr .. ':' .. tostring(info.port)
+            end
+        end
+        return addr
+    end
+end
+
+-- Get trusted SSCSMs
+local trust, trustdb
+local function is_sscsm_trusted(name, code)
+    if sscsm.allowed or trust then return true end
+
+    -- Don't return false if trust is nil.
+    if trust == false then return false end
+
+    if code == nil and type(name) == 'table' then
+        name, code = name.name, name.code
+    end
+    if type(name) ~= 'string' or type(code) ~= 'string' then return false end
+
+    if not trustdb then
+        local raw = storage:get_string('trust-' .. get_address())
+        if raw then trustdb = minetest.deserialize(raw) end
+        trustdb = trustdb or {}
+    end
+
+    if trustdb[name] == code then
+        return true
+    else
+        trust = false
+        return false
+    end
+end
+
 -- exec() code sent by the server.
 local sscsm_queue = {}
 
@@ -264,27 +311,28 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
     -- Don't load the same SSCSM twice
     if not loaded_sscsms[name] then
         loaded_sscsms[name] = true
-        if sscsm_queue then
-            if sscsm.allowed == nil then
-                local info = minetest.get_server_info()
-                local addr = tostring(info.address)
-                if addr == '' then
-                    addr = 'singleplayer'
-                else
-                    addr = addr .. ':' .. tostring(info.port)
-                end
-                minetest.display_chat_message(minetest.colorize('#eeeeee',
-                    '[SSCSM] This server (' .. minetest.formspec_escape(addr) ..
-                    ') wants to run sandboxed code on your client. ' ..
-                    'Run .sscsm to allow or deny this.'))
-                sscsm.allowed = false
-            end
-            table.insert(sscsm_queue, {name=name, code=code})
-        elseif sscsm.allowed then
+        if sscsm.allowed or is_sscsm_trusted(name, code) then
             -- Create the environment
             minetest.log('action', '[SSCSM] Loading ' .. name)
             if not sscsm.env then sscsm.env = Env:new() end
             sscsm.env:exec(code)
+        elseif sscsm_queue then
+            if sscsm.allowed == nil then
+                local a = get_address()
+                minetest.display_chat_message(minetest.colorize('#eeeeee',
+                    '[SSCSM] This server (' .. minetest.formspec_escape(a) ..
+                    ') wants to run sandboxed code on your client. ' ..
+                    'Run .sscsm to allow or deny this.'))
+                if sscsm.env then
+                    minetest.display_chat_message(minetest.colorize('yellow',
+                        '[SSCSM] WARNING: New SSCSMs have been added or '
+                        .. 'modified since you last trusted this server. '
+                        .. 'SSCSMs are in a partially loaded state, '
+                        .. 'please run .sscsm and fix this.'))
+                end
+                sscsm.allowed = false
+            end
+            table.insert(sscsm_queue, {name=name, code=code})
         end
     end
 end)
@@ -323,18 +371,24 @@ do
     end
 end
 
-local allow_id, deny_id, inspect_id
+local allow_id, deny_id, inspect_id, checkbox_id
 local function show_default_formspec()
     leave_mod_channel()
     local allow_text, deny_text, allowed
-    if sscsm.allowed then
+    if sscsm.allowed or (sscsm.env and sscsm_queue and #sscsm_queue == 0) then
         deny_text  = 'Exit to menu'
         allow_text = 'Close dialog'
         allowed = minetest.colorize('orange', 'running')
     elseif sscsm_queue then
-        deny_text  = 'Deny'
         allow_text = 'Allow'
-        allowed = 'inactive'
+
+        if sscsm.env then
+            allowed = minetest.colorize('red', 'partially running')
+            deny_text = 'Exit to menu'
+        else
+            allowed = 'inactive'
+            deny_text = 'Deny'
+        end
     else
         allowed = minetest.colorize('lightgreen', 'disabled')
     end
@@ -351,7 +405,7 @@ local function show_default_formspec()
         'label[0,1;SSCSMs are currently ' ..
         minetest.formspec_escape(allowed) .. '.]'
 
-    if allowed == 'inactive' then
+    if allow_text == 'Allow' then
         inspect_id = allow_id
         while inspect_id == allow_id or inspect_id == deny_id do
             inspect_id = 'btn_' .. random_identifier()
@@ -364,7 +418,25 @@ local function show_default_formspec()
     else
         inspect_id = nil
         formspec = formspec ..
-            'label[0,2;You cannot change this without reconnecting.]'
+            'label[0,1.5;You cannot change this without reconnecting.]'
+    end
+
+    if sscsm.allowed or sscsm_queue then
+        checkbox_id = allow_id
+        while checkbox_id == allow_id or checkbox_id == deny_id or
+                checkbox_id == inspect_id do
+            checkbox_id = 'btn_' .. random_identifier()
+        end
+
+        local tr = trust
+        if tr == nil and sscsm.env and sscsm_queue and #sscsm_queue == 0 then
+            tr = true
+        end
+        formspec = formspec ..'checkbox[0,2;' .. checkbox_id ..
+            ';Permanently allow these SSCSMs.;' ..
+            (tr and 'true' or 'false') .. ']'
+    else
+        checkbox_id = nil
     end
 
     if allow_text and deny_text then
@@ -446,23 +518,33 @@ minetest.register_on_formspec_input(function(formname, fields)
 
         show_inspect_formspec()
     elseif fields[deny_id] then
-        if sscsm.allowed then
+        if sscsm.allowed or sscsm.env then
             minetest.disconnect()
         end
         if sscsm_queue then
             sscsm_queue = false
             minetest.display_chat_message('[SSCSM] SSCSMs have been denied.')
+            storage:set_string('trust-' .. get_address(), '')
         end
     elseif fields[allow_id] then
-        if sscsm.allowed then return true end
+        if sscsm.allowed or (sscsm_queue and #sscsm_queue == 0) then
+            return true
+        end
 
         minetest.display_chat_message('[SSCSM] SSCSMs have been allowed.')
         sscsm.allowed = true
         if sscsm_queue then
             if not sscsm.env then sscsm.env = Env:new() end
+            local mods
+            if trust then mods = {} end
             for _, def in ipairs(sscsm_queue) do
                 minetest.log('action', '[SSCSM] Loading ' .. def.name)
+                if mods then mods[def.name] = def.code end
                 sscsm.env:exec(def.code)
+            end
+            if mods then
+                storage:set_string('trust-' .. get_address(),
+                    minetest.serialize(mods))
             end
         end
         sscsm_queue = false
@@ -472,6 +554,12 @@ minetest.register_on_formspec_input(function(formname, fields)
     elseif fields.quit then
         minetest.display_chat_message(minetest.colorize('#eeeeee',
             '[SSCSM] No action specified.'))
+    elseif fields[checkbox_id] then
+        trust = minetest.is_yes(fields[checkbox_id])
+        if not trust then
+            storage:set_string('trust-' .. get_address(), '')
+        end
+        show_default_formspec()
     else
         show_default_formspec()
     end
@@ -483,7 +571,7 @@ end)
 minetest.register_chatcommand('sscsm', {
     descrption = 'Displays SSCSM options for this server.',
     func = function(param)
-        if sscsm.allowed == nil then
+        if sscsm.allowed == nil and not sscsm.env then
             return false, 'This server has not attempted to load any SSCSMs.'
         else
             show_default_formspec()
