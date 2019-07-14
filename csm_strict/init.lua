@@ -446,6 +446,10 @@ minetest.register_on_formspec_input(function(formname, fields)
         if sscsm.allowed then
             minetest.disconnect()
         end
+        if mod_channel then
+            mod_channel:leave()
+            mod_channel = false
+        end
         if sscsm_queue then
             sscsm_queue = false
             minetest.display_chat_message('[SSCSM] SSCSMs have been denied.')
