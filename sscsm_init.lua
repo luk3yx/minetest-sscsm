@@ -66,12 +66,13 @@ print('Hello from the server-sent CSMs!')
 do
     local funcs = {}
     function sscsm.register_on_mods_loaded(callback)
-        table.insert(funcs, callback)
+        if funcs then table.insert(funcs, callback) end
     end
 
     function sscsm._done_loading_()
         sscsm._done_loading_ = nil
         for _, func in ipairs(funcs) do func() end
+        funcs = nil
     end
 end
 
