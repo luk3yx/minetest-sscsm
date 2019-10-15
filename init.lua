@@ -171,29 +171,31 @@ end
 
 -- Testing
 minetest.after(1, function()
+    -- Check if any other SSCSMs have been registered.
     local c = 0
     for k, v in pairs(sscsm.registered_csms) do
         c = c + 1
         if c > 2 then break end
     end
-    if c == 2 then
-        minetest.log('warning', '[SSCSM] Testing mode enabled.')
+    if c ~= 2 then return end
 
-        sscsm.register({
-            name = 'sscsm:testing_cmds',
-            file = modpath .. '/sscsm_testing.lua',
-        })
+    -- If not, enter testing mode.
+    minetest.log('warning', '[SSCSM] Testing mode enabled.')
 
-        sscsm.register({
-            name = 'sscsm:another_test',
-            code = 'yay()',
-            depends = {'sscsm:testing_cmds'},
-        })
+    sscsm.register({
+        name = 'sscsm:testing_cmds',
+        file = modpath .. '/sscsm_testing.lua',
+    })
 
-        sscsm.register({
-            name = 'sscsm:badtest',
-            code = 'error("Oops, badtest loaded!")',
-            depends = {':init', ':cleanup', 'bad_mod', ':bad2', 'bad3'},
-        })
-    end
+    sscsm.register({
+        name = 'sscsm:another_test',
+        code = 'yay()',
+        depends = {'sscsm:testing_cmds'},
+    })
+
+    sscsm.register({
+        name = 'sscsm:badtest',
+        code = 'error("Oops, badtest loaded!")',
+        depends = {':init', ':cleanup', 'bad_mod', ':bad2', 'bad3'},
+    })
 end)
