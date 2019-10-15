@@ -67,9 +67,39 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
     responses. The command handler is only added once `register_chatcommand`
     has been called.
  - `sscsm.unregister_chatcommand(name)`: Unregisters a chatcommand.
+ - `sscsm.get_player_control()`: Returns a table similar to the server-side
+    `player:get_player_control()`.
+ - `sscsm.restriction_flags`: The `csm_restriction_flags` setting set in
+    the server's `minetest.conf`.
+ - `sscsm.restrictions`: A table based on `csm_restriction_flags`:
+    - `chat_messages`: When `true`, SSCSMs can't send chat messages or run
+        server chatcommands.
+    - `read_itemdefs`: When `true`, SSCSMs can't read item definitions.
+    - `read_nodedefs`: When `true`, SSCSMs can't read node definitions.
+    - `lookup_nodes_limit`: When `true`, any get_node calls are restricted.
+    - `read_playerinfo`: When `true`, `minetest.get_player_names()` will return
+        `nil`.
 
 To communicate with the server-side mods, it is possible to open a mod
 channel.
+
+### CSM restriction flags example
+
+```lua
+minetest.register_chatcommand('m', {
+    description = 'Alias for /msg',
+    func = function(param)
+        if sscsm.restrictions.chat_messages then
+            return false, 'Sorry, csm_restriction_flags prevents chat messages'
+                .. ' from being sent.'
+        end
+        minetest.run_server_chatcommand('msg', param)
+    end,
+})
+```
+
+*Note that modifying `sscsm.restrictions` or `sscsm.restriction_flags` will
+not add or remove restrictions and is not recommended.*
 
 ## Security considerations
 

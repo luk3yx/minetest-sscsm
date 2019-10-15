@@ -125,10 +125,38 @@ function sscsm.register_chatcommand(cmd, def)
 
     if on_chat_message then
         minetest.register_on_sending_chat_message(on_chat_message)
-        on_chat_message = false
+        on_chat_message = nil
     end
 end
 
 function sscsm.unregister_chatcommand(cmd)
     sscsm.registered_chatcommands[cmd] = nil
 end
+
+-- A proper get_player_control doesn't exist yet.
+function sscsm.get_player_control()
+    local n = minetest.localplayer:get_key_pressed()
+    return {
+        up    = n % 2 == 1,
+        down  = math.floor(n / 2) % 2 == 1,
+        left  = math.floor(n / 4) % 2 == 1,
+        right = math.floor(n / 8) % 2 == 1,
+        jump  = math.floor(n / 16) % 2 == 1,
+        aux1  = math.floor(n / 32) % 2 == 1,
+        sneak = math.floor(n / 64) % 2 == 1,
+        LMB   = math.floor(n / 128) % 2 == 1,
+        RMB   = math.floor(n / 256) % 2 == 1,
+    }
+end
+
+-- Allow SSCSMs to know about CSM restriction flags.
+-- "__FLAGS__" is replaced with the actual value in init.lua.
+local flags = __FLAGS__
+sscsm.restriction_flags = assert(flags)
+sscsm.restrictions = {
+    chat_messages = math.floor(flags / 2) % 2 == 1,
+    read_itemdefs = math.floor(flags / 4) % 2 == 1,
+    read_nodedefs = math.floor(flags / 8) % 2 == 1,
+    lookup_nodes_limit = math.floor(flags / 16) % 2 == 1,
+    read_playerinfo = math.floor(flags / 32) % 2 == 1,
+}

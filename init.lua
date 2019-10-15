@@ -86,7 +86,6 @@ local function recalc_csm_order()
 end
 
 -- Register SSCSMs
--- TODO: Automatically minify code (remove whitespace+comments)
 local block_colon = false
 sscsm.registered_csms = {}
 function sscsm.register(def)
@@ -157,6 +156,18 @@ sscsm.register({
 })
 
 block_colon = true
+
+-- Set the CSM restriction flags
+do
+    local flags = tonumber(minetest.settings:get('csm_restriction_flags'))
+    if not flags or flags ~= flags then
+        flags = 62
+    end
+    flags = math.floor(math.max(math.min(flags, 63), 0))
+
+    local def = sscsm.registered_csms[':init']
+    def.code = def.code:gsub('__FLAGS__', tostring(flags))
+end
 
 -- Testing
 minetest.after(1, function()
