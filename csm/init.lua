@@ -60,6 +60,11 @@ do
         end)
     end
 
+    local deserialize = minetest.deserialize
+    safe_funcs[deserialize] = function(str)
+        return deserialize(str, true)
+    end
+
     local wrap = function(n)
         local orig = minetest[n] or minetest[n .. 's']
         if type(orig) == 'function' then
