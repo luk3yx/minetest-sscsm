@@ -5,6 +5,10 @@
 -- © 2019 by luk3yx
 --
 
+--[==[
+error("Bad")
+]==]
+
 -- Make sure the minifier is sane
 a = 0
 --[[

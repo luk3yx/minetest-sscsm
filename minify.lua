@@ -4,91 +4,106 @@
 -- © 2019 by luk3yx
 --
 
+-- Find multiple patterns
+local function find_multiple(text, ...)
+    local n = select('#', ...)
+    local s, e, pattern
+    for i = 1, n do
+        local p = select(i, ...)
+        local s2, e2 = text:find(p)
+        if s2 and (not s or s2 < s) then
+            s, e, pattern = s2, e2 or s2, p
+        end
+    end
+    return s, e, pattern
+end
+
+-- Matches
+-- These take 2-3 arguments (code, res, char) and should return code and res.
+local matches = {
+    -- Handle multi-line strings
+    ['%[=*%['] = function(code, res, char)
+        res = res .. char
+        char = char:sub(2, -2)
+        local s, e = code:find(']' .. char .. ']', nil, true)
+        if not s or not e then return code, res end
+        return code:sub(e + 1), res .. code:sub(1, e)
+    end,
+
+    -- Handle regular comments
+    ['--'] = function(code, res, char)
+        local s, e = code:find('\n', nil, true)
+        if not s or not e then return code, res end
+
+        -- Shift trailing spaces back
+        local spaces = res:match('(%s*)$') or ''
+        return spaces .. code:sub(e), res:sub(1, #res - #spaces)
+    end,
+
+    -- Handle multi-line comments
+    ['%-%-%[=*%['] = function(code, res, char)
+        char = char:sub(4, -2)
+        local s, e = code:find(']' .. char .. ']', nil, true)
+        if not s or not e then return code, res end
+
+        -- Shift trailing spaces back
+        local spaces = res:match('(%s*)$') or ''
+        return spaces .. code:sub(e + 1), res:sub(1, #res - #spaces)
+    end,
+
+    -- Handle quoted text
+    ['"'] = function(code, res, char)
+        res = res .. char
+
+        -- Handle backslashes
+        repeat
+            local s, e, pattern = find_multiple(code, '\\', char)
+            if pattern == char then
+                res = res .. code:sub(1, e)
+                code = code:sub(e + 1)
+            elseif pattern then
+                res = res .. code:sub(1, e + 1)
+                code = code:sub(e + 2)
+            end
+        until not pattern or pattern == char
+
+        return code, res
+    end,
+
+    ['%s*[\r\n]%s*'] = function(code, res, char)
+        return code, res .. '\n'
+    end,
+
+    ['[ \t]+'] = function(code, res, char)
+        return code, res .. ' '
+    end,
+}
+
+-- Give the functions alternate names
+matches["'"] = matches['"']
+
+-- The actual transpiler
 return function(code)
     assert(type(code) == 'string')
 
-    local res, last, ws1, ws2, escape = '', false, '\n', '\n', false
-    local sp = {['"'] = true, ["'"] = true, ['['] = true}
+    local res = ''
 
-    for i = 1, #code do
-        local char = code:sub(i, i)
-        if char == '\r' then char = '\n' end
-        if last == '--' or last == '--.' or last == '--[' then
-            ws1 = ws2
-            if char == '\n' then
-                if ws1 ~= '\n' then res = res .. '\n' end
-                last = false
-                ws1 = '\n'
-            elseif char == '[' and last ~= '--.' then
-                last = last .. char
-            else
-                last = '--.'
-            end
-        elseif last == '--[[' or last == '-]' then
-            ws1 = ws2
-            if last == '-]' then
-                if char == ']' then
-                    last = false
-                else
-                    last = '--[['
-                end
-            elseif char == ']' then
-                last = '-]'
-            end
-        elseif last == '[[' or last == ']' then
-            if last == ']' then
-                if char == ']' then
-                    last = false
-                else
-                    last = '[['
-                end
-            elseif char == ']' then
-                last = ']'
-            end
-            res = res .. char
-        elseif escape then
-            res = res .. '\\' .. char
-            escape = false
-        elseif char == '\\' then
-            escape = true
-        elseif last == '"' or last == "'" then
-            if char == last then last = false end
-            res = res .. char
-        elseif last == '[' then
-            if char == last then
-                last = last .. char
-            else
-                last = false
-            end
-            res = res .. char
-        elseif last == '-' then
-            if char == '-' then
-                last, ws1 = '--', ws2
-            else
-                res = res .. '-' .. char
-                last, ws1 = false, false
-            end
-        elseif char == '-' then
-            last = char
-            ws1 = ws2
-        elseif char == '\n' then
-            if ws2 == ' ' then
-                res = res:sub(1, #res - 1) .. '\n'
-            elseif ws2 ~= '\n' then
-                res = res .. '\n'
-            end
-            ws1 = '\n'
-        elseif char == ' ' or char == '\t' then
-            if not ws2 then res = res .. ' ' end
-            ws1 = ws2 or ' '
-        else
-            if sp[char] then last = char end
-            res = res .. char
-        end
+    -- Split the code by "tokens"
+    while true do
+        -- Search for special characters
+        local s, e, pattern = find_multiple(code, '[\'"\\]', '%-%-%[=*%[',
+            '%-%-', '%[=*%[', '%s*[\r\n]%s*', '[ \t]+')
+        if not s then break end
 
-        ws2 = ws1
-        ws1 = false
+        -- Add non-matching characters
+        res = res .. code:sub(1, math.max(s - 1, 0))
+
+        -- Call the correct function
+        local char = code:sub(s, e)
+        local func = matches[char] or matches[pattern]
+        assert(func, 'No function found for pattern!')
+        code, res = func(code:sub(e + 1), res, char)
     end
 
-    return res
+    return (res .. code):trim()
 end
