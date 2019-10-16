@@ -1,5 +1,7 @@
 # Minetest server-sent CSM proof-of-concept
 
+[Source](https://git.minetest.land/luk3yx/sscsm)
+
 Attempts to run server-sent CSMs locally in a sandbox.
 
 ## How it works
