@@ -4,8 +4,15 @@
 -- © 2019 by luk3yx
 --
 
-local sscsm = {minify=true}
 local modname = minetest.get_current_modname()
+
+-- If this is running as a CSM (improper installation), load the CSM code.
+if INIT == 'client' then
+    dofile(modname .. ':csm/init.lua')
+    return
+end
+
+local sscsm = {minify=true}
 _G[modname] = sscsm
 local modpath = minetest.get_modpath(modname)
 
