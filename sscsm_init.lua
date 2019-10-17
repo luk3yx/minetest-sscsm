@@ -2,7 +2,8 @@
 -- SSCSM: Server-Sent Client-Side Mods proof-of-concept
 -- Initial code sent to the client
 --
--- © 2019 by luk3yx
+-- Copyright © 2019 by luk3yx
+-- License: https://git.minetest.land/luk3yx/sscsm/src/branch/master/LICENSE.md
 --
 
 -- Make sure table.unpack exists
@@ -35,7 +36,6 @@ end
 if not sscsm.global_exists('minetest') then
     minetest = assert(core, 'No "minetest" global found!')
 end
-core = nil
 
 minetest.global_exists = sscsm.global_exists
 

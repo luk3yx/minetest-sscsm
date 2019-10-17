@@ -24,8 +24,33 @@ To create a SSCSM:
  - Install this mod onto a server.
  - Enable mod channels on the server (add `enable_mod_channels = true` to
      minetest.conf).
- - Create SSCSMs with the [API](#api).
+ - Create SSCSMs with the API.
  - Install the CSM (in the `csm/` directory) onto clients and enable it.
+
+### Preserving copyright and license notices
+
+The minifier preserves comments starting with "copyright" or "license":
+(case-insensitive, excluding leading spaces).
+
+Input:
+
+```lua
+-- Copyright: 1
+-- License: 2
+-- A normal comment.
+--COPYRIGHT5
+
+...
+```
+
+Output:
+
+```lua
+-- Copyright: 1
+-- License: 2
+--COPYRIGHT5
+...
+```
 
 ## Server-side mod facing API
 

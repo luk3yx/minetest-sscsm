@@ -1,7 +1,7 @@
 --
 -- SSCSM: Server-Sent Client-Side Mods proof-of-concept: "Strict" version
 --
--- © 2019 by luk3yx
+-- Copyright © 2019 by luk3yx
 --
 
 -- For debugging, this can be a global variable.

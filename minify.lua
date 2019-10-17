@@ -1,7 +1,7 @@
 --
 -- A primitive code minifier
 --
--- © 2019 by luk3yx
+-- Copyright © 2019 by luk3yx
 --
 
 -- Find multiple patterns
@@ -33,11 +33,19 @@ local matches = {
     -- Handle regular comments
     ['--'] = function(code, res, char)
         local s, e = code:find('\n', nil, true)
-        if not s or not e then return code, res end
+        if not s or not e then return '', res end
+
+        -- Don't remove copyright or license information.
+        if e >= 7 then
+            local first_word = (code:match('^[ \t]*(%w+)') or ''):lower()
+            if first_word == 'copyright' or first_word == 'license' then
+                return code:sub(s), res .. char .. code:sub(1, s - 1)
+            end
+        end
 
         -- Shift trailing spaces back
         local spaces = res:match('(%s*)$') or ''
-        return spaces .. code:sub(e), res:sub(1, #res - #spaces)
+        return spaces .. code:sub(s), res:sub(1, #res - #spaces)
     end,
 
     -- Handle multi-line comments

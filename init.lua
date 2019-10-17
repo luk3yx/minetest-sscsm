@@ -1,7 +1,7 @@
 --
 -- SSCSM: Server-Sent Client-Side Mods proof-of-concept
 --
--- © 2019 by luk3yx
+-- Copyright © 2019 by luk3yx
 --
 
 local modname = minetest.get_current_modname()

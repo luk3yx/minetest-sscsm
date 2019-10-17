@@ -2,7 +2,8 @@
 -- SSCSM: Server-Sent Client-Side Mods proof-of-concept
 -- Testing code
 --
--- © 2019 by luk3yx
+-- Copyright © 2019 by luk3yx
+-- License: https://git.minetest.land/luk3yx/sscsm/src/branch/master/LICENSE.md
 --
 
 --[==[
