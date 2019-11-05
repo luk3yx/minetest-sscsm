@@ -19,7 +19,8 @@ if not rawget   then function rawget(n, name) return n[name] end end
 if not rawset   then function rawset(n, k, v) n[k] = v end end
 if not rawequal then function rawequal(a, b) return a == b end end
 
--- Older versions of the CSM didn't provide assert().
+-- Older versions of the CSM don't provide assert(), this function exists for
+-- compatibility.
 if not assert then
     function assert(value, ...)
         if value then
