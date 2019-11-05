@@ -23,7 +23,7 @@ if not rawequal then function rawequal(a, b) return a == b end end
 if not assert then
     function assert(value, ...)
         if value then
-            return value
+            return value, ...
         else
             error(... or 'assertion failed!', 2)
         end
