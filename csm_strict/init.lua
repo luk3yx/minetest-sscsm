@@ -166,9 +166,9 @@ local base_env = Env:new_empty()
 function Env.new() return base_env:copy() end
 
 -- Clone everything
-base_env:add_globals('dump', 'dump2', 'error', 'ipairs', 'math', 'next',
-    'pairs', 'pcall', 'select', 'setmetatable', 'string', 'table', 'tonumber',
-    'tostring', 'type', 'vector', 'xpcall', '_VERSION')
+base_env:add_globals('assert', 'dump', 'dump2', 'error', 'ipairs', 'math',
+    'next', 'pairs', 'pcall', 'select', 'setmetatable', 'string', 'table',
+    'tonumber', 'tostring', 'type', 'vector', 'xpcall', '_VERSION')
 
 base_env:set_copy('os', {clock = os.clock, difftime = os.difftime,
     time = os.time})

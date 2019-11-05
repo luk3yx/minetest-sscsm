@@ -96,6 +96,9 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
  - `sscsm.unregister_chatcommand(name)`: Unregisters a chatcommand.
  - `sscsm.get_player_control()`: Returns a table similar to the server-side
     `player:get_player_control()`.
+ - `sscsm.every(interval, func, ...)`: Calls `func` every `interval` seconds
+    with any extra parameters specified. Use `minetest.register_globalstep`
+    instead if `interval` is `0`.
  - `sscsm.restriction_flags`: The `csm_restriction_flags` setting set in
     the server's `minetest.conf`.
  - `sscsm.restrictions`: A table based on `csm_restriction_flags`:

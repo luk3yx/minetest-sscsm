@@ -81,3 +81,9 @@ end)
 function yay()
     print('yay() called')
 end
+
+print('assert = ' .. tostring(assert))
+sscsm.every(60, function(param1)
+    assert(param1 == 123)
+    print('sscsm.every test called.')
+end, 123)

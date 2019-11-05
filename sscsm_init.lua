@@ -6,7 +6,7 @@
 -- License: https://git.minetest.land/luk3yx/sscsm/src/branch/master/LICENSE.md
 --
 
--- Make sure table.unpack exists
+-- Make sure both table.unpack and unpack exist.
 if table.unpack then
     unpack = table.unpack
 else
@@ -18,12 +18,15 @@ end
 if not rawget   then function rawget(n, name) return n[name] end end
 if not rawset   then function rawset(n, k, v) n[k] = v end end
 if not rawequal then function rawequal(a, b) return a == b end end
+
+-- Older versions of the CSM didn't provide assert().
 if not assert then
-    function assert(value, err)
-        if not value then
-            error(err or 'Assertion failed!', 2)
+    function assert(value, ...)
+        if value then
+            return value
+        else
+            error(... or 'assertion failed!', 2)
         end
-        return value
     end
 end
 
@@ -147,6 +150,18 @@ function sscsm.get_player_control()
         LMB   = math.floor(n / 128) % 2 == 1,
         RMB   = math.floor(n / 256) % 2 == 1,
     }
+end
+
+-- Call func(...) every <interval> seconds.
+local function sscsm_every(interval, func, ...)
+    minetest.after(interval, sscsm_every, interval, func, ...)
+    return func(...)
+end
+
+function sscsm.every(interval, func, ...)
+    assert(type(interval) == 'number' and type(func) == 'function',
+        'Invalid sscsm.every() invocation.')
+    return sscsm_every(interval, func, ...)
 end
 
 -- Allow SSCSMs to know about CSM restriction flags.
