@@ -176,3 +176,11 @@ sscsm.restrictions = {
     lookup_nodes_limit = math.floor(flags / 16) % 2 == 1,
     read_playerinfo = math.floor(flags / 32) % 2 == 1,
 }
+sscsm.restrictions.lookup_nodes = sscsm.restrictions.lookup_nodes_limit
+
+-- Add minetest.get_csm_restrictions() if it doesn't exist already.
+if not minetest.get_csm_restrictions then
+    function minetest.get_csm_restrictions()
+        return table.copy(sscsm.restrictions)
+    end
+end
