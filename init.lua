@@ -8,7 +8,13 @@ local modname = minetest.get_current_modname()
 
 -- If this is running as a CSM (improper installation), load the CSM code.
 if INIT == 'client' then
-    dofile(modname .. ':csm/init.lua')
+    local modpath
+    if minetest.get_modpath then
+        modpath = minetest.get_modpath(modname)
+    else
+        modpath = modname .. ':'
+    end
+    dofile(modpath .. 'csm/init.lua')
     return
 end
 
