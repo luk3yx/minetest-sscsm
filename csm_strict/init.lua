@@ -344,6 +344,7 @@ end)
 
 -- Send "0"
 local function request_csms(c)
+    base_env._raw.minetest.localplayer = minetest.localplayer
     c = c or 10
     if c <= 0 then return leave_mod_channel() end
     if minetest.localplayer and mod_channel:is_writeable() then
