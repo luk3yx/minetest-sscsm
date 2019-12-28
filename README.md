@@ -70,6 +70,29 @@ Registers a server-provided CSM with the following definition table.
 
 This definition table must have `name` and either `code` or `file`.
 
+### Communication with SSCSMs
+
+SSCSM provides an API inspired by
+[csm_com](https://github.com/DS-Minetest/csm_com) for sending private messages
+to clients. Unlike mod channels, only the target client gets these messages.
+The internal communication protocol is currently unstable and will probably
+change in a future release.
+
+*Note that channel names must not contain `\001`/U+0001.*
+
+ - `sscsm.com_send(player_or_name, channel, msg)`: Sends `msg`
+    (a JSON-compatible object) to `player_or_name` on the SSCSM com channel
+    `channel`. Channel names should be `modname` or `modname:name` to prevent
+    conflicts.
+ - `sscsm.com_send_all(channel, msg)`: Sends `msg` to all clients that are
+    running SSCSMs.
+ - `sscsm.register_on_com_receive(channel, function(name, msg))`: Registers a
+    function to be called when a message on `channel` is received from the
+    client. `msg` may be any JSON-compatible type, so checking the type of this
+    object is strongly recommended.
+ - `sscsm.has_sscsms_enabled(name)`: Returns `true` if `name` has enabled
+    SSCSMs. This will not be `true` immediately after players join, however.
+
 #### Maximum SSCSM size
 
 Because of Minetest network protocol limitations, the amount of data that can
@@ -109,6 +132,12 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
     - `lookup_nodes_limit`: When `true`, any get_node calls are restricted.
     - `read_playerinfo`: When `true`, `minetest.get_player_names()` will return
         `nil`.
+ - `sscsm.com_send(channel, msg)`: Sends `msg` (a JSON-compatible object) to
+    the server. *Note that client-to-server messages cannot be long, for plain
+    strings the channel and message combined must be at most 492 characters.*
+ - `sscsm.register_on_com_receive(channel, function(msg))`: Registers a
+    function to be called when a message on `channel` is received from the
+    server.
 
 To communicate with the server-side mods, it is possible to open a mod
 channel.

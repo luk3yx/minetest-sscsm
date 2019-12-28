@@ -80,11 +80,6 @@ do
     end
 end
 
-sscsm.register_on_mods_loaded(function()
-    print('SSCSMs loaded, leaving mod channel.')
-    sscsm.leave_mod_channel()
-end)
-
 -- Helper functions
 if not minetest.get_node then
     function minetest.get_node(pos)
@@ -184,3 +179,64 @@ if not minetest.get_csm_restrictions then
         return table.copy(sscsm.restrictions)
     end
 end
+
+-- SSCSM communication
+-- A lot of this is copied from init.lua.
+local function validate_channel(channel)
+    if type(channel) ~= 'string' then
+        error('SSCSM com channels must be strings!', 3)
+    end
+    if channel:find('\001', nil, true) then
+        error('SSCSM com channels cannot contain U+0001!', 3)
+    end
+end
+
+function sscsm.com_send(channel, msg)
+    assert(not sscsm.restrictions.chat_messages, 'Server restrictions ' ..
+        'prevent SSCSM com messages from being sent!')
+    validate_channel(channel)
+    if type(msg) == 'string' then
+        msg = '\002' .. msg
+    else
+        msg = minetest.write_json(msg)
+    end
+    minetest.run_server_chatcommand('admin', '\001SSCSM_COM\001' .. channel ..
+        '\001' .. msg)
+end
+
+local registered_on_receive = {}
+function sscsm.register_on_com_receive(channel, func)
+    if not registered_on_receive[channel] then
+        registered_on_receive[channel] = {}
+    end
+    table.insert(registered_on_receive[channel], func)
+end
+
+-- Detect messages and handle them
+minetest.register_on_receiving_chat_message(function(message)
+    local chan, msg = message:match('^\001SSCSM_COM\001([^\001]*)\001(.*)$')
+    if not chan or not msg then return end
+
+    -- Get the callbacks
+    local callbacks = registered_on_receive[chan]
+    if not callbacks then return end
+
+    -- Load the message
+    if msg:sub(1, 1) == '\002' then
+        msg = msg:sub(2)
+    else
+        msg = minetest.parse_json(msg)
+    end
+
+    -- Run callbacks
+    for _, func in ipairs(callbacks) do
+        func(msg)
+    end
+    return true
+end)
+
+sscsm.register_on_mods_loaded(function()
+    print('SSCSMs loaded, leaving mod channel.')
+    sscsm.leave_mod_channel()
+    sscsm.com_send('sscsm:com_test', {flags = sscsm.restriction_flags})
+end)

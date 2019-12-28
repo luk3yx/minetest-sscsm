@@ -142,11 +142,12 @@ end
 minetest.register_on_mods_loaded(recalc_csm_order)
 
 -- Handle players joining
+local has_sscsms = {}
 local mod_channel = minetest.mod_channel_join('sscsm:exec_pipe')
 minetest.register_on_modchannel_message(function(channel_name, sender, message)
     if channel_name ~= 'sscsm:exec_pipe' or not sender or
             not mod_channel:is_writeable() or message ~= '0' or
-            sender:find('\n') then
+            sender:find('\n') or has_sscsms[sender] then
         return
     end
     minetest.log('action', '[SSCSM] Sending CSMs on request for ' .. sender
@@ -171,15 +172,103 @@ sscsm.register({
 block_colon = true
 
 -- Set the CSM restriction flags
-do
-    local flags = tonumber(minetest.settings:get('csm_restriction_flags'))
-    if not flags or flags ~= flags then
-        flags = 62
-    end
-    flags = math.floor(math.max(math.min(flags, 63), 0))
+local flags = tonumber(minetest.settings:get('csm_restriction_flags'))
+if not flags or flags ~= flags then
+    flags = 62
+end
+flags = math.floor(math.max(math.min(flags, 63), 0))
 
+do
     local def = sscsm.registered_csms[':init']
     def.code = def.code:gsub('__FLAGS__', tostring(flags))
+end
+
+if math.floor(flags / 2) % 2 == 1 then
+    minetest.log('warning', '[SSCSM] SSCSMs enabled, however CSMs cannot '
+        .. 'send chat messages! This will prevent SSCSMs from sending '
+        .. 'messages to the server.')
+    sscsm.com_write_only = true
+else
+    sscsm.com_write_only = false
+end
+
+-- SSCSM communication
+local function validate_channel(channel)
+    if type(channel) ~= 'string' then
+        error('SSCSM com channels must be strings!', 3)
+    end
+    if channel:find('\001', nil, true) then
+        error('SSCSM com channels cannot contain U+0001!', 3)
+    end
+end
+
+function sscsm.com_send(pname, channel, msg)
+    if minetest.is_player(pname) then
+        pname = pname:get_player_name()
+    end
+    validate_channel(channel)
+    if type(msg) == 'string' then
+        msg = '\002' .. msg
+    else
+        msg = assert(minetest.write_json(msg))
+    end
+    minetest.chat_send_player(pname, '\001SSCSM_COM\001' .. channel .. '\001'
+        .. msg)
+end
+
+local registered_on_receive = {}
+function sscsm.register_on_com_receive(channel, func)
+    if not registered_on_receive[channel] then
+        registered_on_receive[channel] = {}
+    end
+    table.insert(registered_on_receive[channel], func)
+end
+
+local admin_func = minetest.registered_chatcommands['admin'].func
+minetest.override_chatcommand('admin', {
+    func = function(name, param)
+        local chan, msg = param:match('^\001SSCSM_COM\001([^\001]*)\001(.*)$')
+        if not chan or not msg then
+            return admin_func(name, param)
+        end
+
+        -- Get the callbacks
+        local callbacks = registered_on_receive[chan]
+        if not callbacks then return end
+
+        -- Load the message
+        if msg:sub(1, 1) == '\002' then
+            msg = msg:sub(2)
+        else
+            msg = minetest.parse_json(msg)
+        end
+
+        -- Run callbacks
+        for _, func in ipairs(callbacks) do
+            func(name, msg)
+        end
+    end,
+})
+
+-- Add a callback for sscsm:com_test
+sscsm.register_on_com_receive('sscsm:com_test', function(name, msg)
+    if type(msg) == 'table' and msg.flags == flags then
+        has_sscsms[name] = true
+    end
+end)
+
+function sscsm.has_sscsms_enabled(name)
+    return has_sscsms[name] or false
+end
+
+minetest.register_on_leaveplayer(function(player)
+    has_sscsms[player:get_player_name()] = nil
+end)
+
+function sscsm.com_send_all(channel, msg)
+    for name, _ in pairs(has_sscsms) do
+        sscsm.com_send(name, channel, msg)
+    end
 end
 
 -- Testing

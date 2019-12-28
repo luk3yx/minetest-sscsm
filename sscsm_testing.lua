@@ -87,3 +87,8 @@ sscsm.every(60, function(param1)
     assert(param1 == 123)
     print('sscsm.every test called.')
 end, 123)
+
+sscsm.register_on_com_receive('sscsm:testing', function(msg)
+    print('Got ' .. minetest.serialize(msg):sub(8) .. ' from the server')
+    sscsm.com_send('sscsm:testing', msg)
+end)
