@@ -215,7 +215,6 @@ end
 -- Load split messages
 local incoming_messages = {}
 local function load_split_message(chan, msg)
-    print('Got split message chunk')
     local id, i, l, pkt = msg:match('^\1([^\1]+)\1([^\1]+)\1([^\1]+)\1(.*)$')
     id, i, l = tonumber(id), tonumber(i), tonumber(l)
 
@@ -245,7 +244,7 @@ minetest.register_on_receiving_chat_message(function(message)
     local callbacks = registered_on_receive[chan]
     if not callbacks then return end
 
-    -- Load the message
+    -- Handle split messages
     local prefix = msg:sub(1, 1)
     if prefix == '\001' then
         msg = load_split_message(chan, msg)
@@ -255,6 +254,7 @@ minetest.register_on_receiving_chat_message(function(message)
         prefix = msg:sub(1, 1)
     end
 
+    -- Load the message
     if prefix == '\002' then
         msg = msg:sub(2)
     else
