@@ -70,6 +70,12 @@ Registers a server-provided CSM with the following definition table.
 
 This definition table must have `name` and either `code` or `file`.
 
+### `sscsm.register_on_sscsms_loaded(function(name))`
+
+Registers a function to be called when a client loads SSCSMs. Note that this
+function will not work unless CSMs have the ability to send chat messages as it
+relies on the SSCSM communication API described below.
+
 ### Communication with SSCSMs
 
 SSCSM provides an API inspired by

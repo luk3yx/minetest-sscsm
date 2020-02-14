@@ -278,9 +278,18 @@ minetest.override_chatcommand('admin', {
 })
 
 -- Add a callback for sscsm:com_test
+local registered_on_loaded = {}
+function sscsm.register_on_sscsms_loaded(func)
+    table.insert(registered_on_loaded, func)
+end
+
 sscsm.register_on_com_receive('sscsm:com_test', function(name, msg)
-    if type(msg) == 'table' and msg.flags == flags then
-        has_sscsms[name] = true
+    if type(msg) ~= 'table' or msg.flags ~= flags or has_sscsms[name] then
+        return
+    end
+    has_sscsms[name] = true
+    for _, func in ipairs(registered_on_loaded) do
+        func(name)
     end
 end)
 
@@ -310,6 +319,11 @@ minetest.after(0, function()
 
     -- If not, enter testing mode.
     minetest.log('warning', '[SSCSM] Testing mode enabled.')
+
+    sscsm.register_on_sscsms_loaded(function(name)
+        minetest.log('action', '[SSCSM] register_on_sscsms_loaded callback ' ..
+            'fired for user ' .. name)
+    end)
 
     sscsm.register({
         name = 'sscsm:testing_cmds',
