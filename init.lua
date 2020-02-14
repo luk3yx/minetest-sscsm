@@ -202,6 +202,7 @@ local function validate_channel(channel)
     end
 end
 
+local msgids = {}
 function sscsm.com_send(pname, channel, msg)
     if minetest.is_player(pname) then
         pname = pname:get_player_name()
@@ -212,8 +213,34 @@ function sscsm.com_send(pname, channel, msg)
     else
         msg = assert(minetest.write_json(msg))
     end
-    minetest.chat_send_player(pname, '\001SSCSM_COM\001' .. channel .. '\001'
-        .. msg)
+
+    -- Short messages can be sent all at once
+    local prefix = '\001SSCSM_COM\001' .. channel .. '\001'
+    if #msg < 65300 then
+        minetest.chat_send_player(pname, prefix .. msg)
+        return
+    end
+
+    -- You should never send messages over 128MB to clients
+    assert(#msg < 134217728)
+
+    -- Otherwise split the message into multiple chunks
+    prefix = prefix .. '\001'
+    local id = #msgids + 1
+    local i = 0
+    msgids[id] = true
+    local total_msgs = math.ceil(#msg / 65000)
+    repeat
+        i = i + 1
+        minetest.chat_send_player(pname, prefix .. id .. '\001' .. i ..
+            '\001' .. total_msgs .. '\001' .. msg:sub(1, 65000))
+        msg = msg:sub(65001)
+    until msg == ""
+
+    -- Allow the ID to be reused on the next globalstep.
+    minetest.after(0, function()
+        msgids[id] = nil
+    end)
 end
 
 local registered_on_receive = {}
@@ -272,7 +299,7 @@ function sscsm.com_send_all(channel, msg)
 end
 
 -- Testing
-minetest.after(1, function()
+minetest.after(0, function()
     -- Check if any other SSCSMs have been registered.
     local c = 0
     for k, v in pairs(sscsm.registered_csms) do

@@ -212,6 +212,30 @@ function sscsm.register_on_com_receive(channel, func)
     table.insert(registered_on_receive[channel], func)
 end
 
+-- Load split messages
+local incoming_messages = {}
+local function load_split_message(chan, msg)
+    print('Got split message chunk')
+    local id, i, l, pkt = msg:match('^\1([^\1]+)\1([^\1]+)\1([^\1]+)\1(.*)$')
+    id, i, l = tonumber(id), tonumber(i), tonumber(l)
+
+    if not incoming_messages[id] then
+        incoming_messages[id] = {}
+    end
+    local msgs = incoming_messages[id]
+    msgs[i] = pkt
+
+    -- Return true if all the messages have been received
+    if #msgs < l then return end
+    for i = 1, l do
+        if not msgs[i] then
+            return
+        end
+    end
+    incoming_messages[id] = nil
+    return table.concat(msgs, '')
+end
+
 -- Detect messages and handle them
 minetest.register_on_receiving_chat_message(function(message)
     local chan, msg = message:match('^\001SSCSM_COM\001([^\001]*)\001(.*)$')
@@ -222,7 +246,16 @@ minetest.register_on_receiving_chat_message(function(message)
     if not callbacks then return end
 
     -- Load the message
-    if msg:sub(1, 1) == '\002' then
+    local prefix = msg:sub(1, 1)
+    if prefix == '\001' then
+        msg = load_split_message(chan, msg)
+        if not msg then
+            return true
+        end
+        prefix = msg:sub(1, 1)
+    end
+
+    if prefix == '\002' then
         msg = msg:sub(2)
     else
         msg = minetest.parse_json(msg)
@@ -230,7 +263,10 @@ minetest.register_on_receiving_chat_message(function(message)
 
     -- Run callbacks
     for _, func in ipairs(callbacks) do
-        func(msg)
+        local ok, msg = pcall(func, msg)
+        if not ok then
+            minetest.log('error', '[SSCSM] ' .. tostring(msg))
+        end
     end
     return true
 end)

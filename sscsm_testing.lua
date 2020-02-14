@@ -89,6 +89,10 @@ sscsm.every(60, function(param1)
 end, 123)
 
 sscsm.register_on_com_receive('sscsm:testing', function(msg)
-    print('Got ' .. minetest.serialize(msg):sub(8) .. ' from the server')
-    sscsm.com_send('sscsm:testing', msg)
+    if #msg > 400 then
+        print('Got large message of length ' .. #msg .. ' from the server')
+    else
+        sscsm.com_send('sscsm:testing', msg)
+        print('Got ' .. minetest.serialize(msg):sub(8) .. ' from the server')
+    end
 end)

@@ -83,7 +83,8 @@ change in a future release.
  - `sscsm.com_send(player_or_name, channel, msg)`: Sends `msg`
     (a JSON-compatible object) to `player_or_name` on the SSCSM com channel
     `channel`. Channel names should be `modname` or `modname:name` to prevent
-    conflicts.
+    conflicts. *Although the limit for server-to-client messages is 128MB, I
+    strongly recommend not sending large messages when not necessary.*
  - `sscsm.com_send_all(channel, msg)`: Sends `msg` to all clients that are
     running SSCSMs.
  - `sscsm.register_on_com_receive(channel, function(name, msg))`: Registers a
