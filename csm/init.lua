@@ -270,6 +270,7 @@ end)
 -- Send "0"
 local function request_csms(c)
     base_env._raw.minetest.localplayer = minetest.localplayer
+    base_env._raw.minetest.camera = minetest.camera
     c = c or 10
     if c <= 0 then
         if mod_channel then
