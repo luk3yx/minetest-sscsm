@@ -242,7 +242,7 @@ minetest.register_on_receiving_chat_message(function(message)
 
     -- Get the callbacks
     local callbacks = registered_on_receive[chan]
-    if not callbacks then return end
+    if not callbacks then return true end
 
     -- Handle split messages
     local prefix = msg:sub(1, 1)
