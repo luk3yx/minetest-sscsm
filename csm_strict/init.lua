@@ -344,6 +344,13 @@ end)
 
 -- Send "0"
 local function request_csms(c)
+    -- Don't request SSCSMs until TOSERVER_CLIENT_READY has been sent.
+    -- There is no callback for this, polling must be used instead.
+    if not minetest.localplayer then
+        minetest.after(0.05, request_csms, c)
+        return
+    end
+
     base_env._raw.minetest.localplayer = minetest.localplayer
     base_env._raw.minetest.camera = minetest.camera
     c = c or 10
