@@ -128,9 +128,9 @@ function Env:copy()
 end
 
 -- Load code into a callable function.
-function Env:loadstring(code)
+function Env:loadstring(code, file)
     if code:byte(1) == 27 then return nil, 'Invalid code!' end
-    local f, msg = loadstring(code)
+    local f, msg = loadstring(code, ('=%q'):format(file))
     if not f then return nil, msg end
     setfenv(f, self._raw)
     return function(...)
@@ -143,8 +143,8 @@ function Env:loadstring(code)
     end
 end
 
-function Env:exec(code)
-    local f, msg = self:loadstring(code)
+function Env:exec(code, file)
+    local f, msg = self:loadstring(code, file)
     if not f then
         minetest.log('error', '[SSCSM] Syntax error: ' .. tostring(msg))
         return false
@@ -263,7 +263,7 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
     if not loaded_sscsms[name] then
         minetest.log('action', '[SSCSM] Loading ' .. name)
         loaded_sscsms[name] = true
-        sscsm.env:exec(code)
+        sscsm.env:exec(code, name)
     end
 end)
 

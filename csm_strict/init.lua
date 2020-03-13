@@ -136,9 +136,9 @@ function Env:copy()
 end
 
 -- Load code into a callable function.
-function Env:loadstring(code)
+function Env:loadstring(code, file)
     if code:byte(1) == 27 then return nil, 'Invalid code!' end
-    local f, msg = loadstring(code)
+    local f, msg = loadstring(code, ('=%q'):format(file))
     if not f then return nil, msg end
     setfenv(f, self._raw)
     return function(...)
@@ -151,8 +151,8 @@ function Env:loadstring(code)
     end
 end
 
-function Env:exec(code)
-    local f, msg = self:loadstring(code)
+function Env:exec(code, file)
+    local f, msg = self:loadstring(code, file)
     if not f then
         minetest.log('error', '[SSCSM] Syntax error: ' .. tostring(msg))
         return false
@@ -320,7 +320,7 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
             -- Create the environment
             minetest.log('action', '[SSCSM] Loading ' .. name)
             if not sscsm.env then sscsm.env = Env:new() end
-            sscsm.env:exec(code)
+            sscsm.env:exec(code, name)
         elseif sscsm_queue then
             if sscsm.allowed == nil then
                 local a = get_address()
@@ -563,7 +563,7 @@ minetest.register_on_formspec_input(function(formname, fields)
             for _, def in ipairs(sscsm_queue) do
                 minetest.log('action', '[SSCSM] Loading ' .. def.name)
                 if mods then mods[def.name] = def.code end
-                sscsm.env:exec(def.code)
+                sscsm.env:exec(def.code, def.name)
             end
             if mods then
                 storage:set_string('trust-' .. get_address(),
