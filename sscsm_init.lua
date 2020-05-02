@@ -132,20 +132,29 @@ function sscsm.unregister_chatcommand(cmd)
     sscsm.registered_chatcommands[cmd] = nil
 end
 
--- A proper get_player_control doesn't exist yet.
-function sscsm.get_player_control()
-    local n = minetest.localplayer:get_key_pressed()
-    return {
-        up    = n % 2 == 1,
-        down  = math.floor(n / 2) % 2 == 1,
-        left  = math.floor(n / 4) % 2 == 1,
-        right = math.floor(n / 8) % 2 == 1,
-        jump  = math.floor(n / 16) % 2 == 1,
-        aux1  = math.floor(n / 32) % 2 == 1,
-        sneak = math.floor(n / 64) % 2 == 1,
-        LMB   = math.floor(n / 128) % 2 == 1,
-        RMB   = math.floor(n / 256) % 2 == 1,
-    }
+-- A proper get_player_control didn't exist before Minetest 5.3.0.
+if minetest.localplayer.get_control then
+    function sscsm.get_player_control()
+        return minetest.localplayer:get_control()
+    end
+else
+    function sscsm.get_player_control()
+        local n = minetest.localplayer:get_key_pressed()
+        return {
+            up    = n % 2 == 1,
+            down  = math.floor(n / 2) % 2 == 1,
+            left  = math.floor(n / 4) % 2 == 1,
+            right = math.floor(n / 8) % 2 == 1,
+            jump  = math.floor(n / 16) % 2 == 1,
+            aux1  = math.floor(n / 32) % 2 == 1,
+            sneak = math.floor(n / 64) % 2 == 1,
+            LMB   = math.floor(n / 128) % 2 == 1,
+            RMB   = math.floor(n / 256) % 2 == 1,
+        }
+    end
+
+    -- In Minetest 5.2.0, minetest.get_node_light() segfaults.
+    minetest.get_node_light = nil
 end
 
 -- Call func(...) every <interval> seconds.
