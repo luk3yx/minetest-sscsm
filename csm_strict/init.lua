@@ -417,7 +417,7 @@ local function show_default_formspec()
     end
 
     local formspec = 'size[8,4]no_prepend[]' ..
-        'image_button[0,0;8,1;;ignore;SSCSM;true;false;]' ..
+        'image_button[0,0;8,1;blank.png;ignore;SSCSM;true;false;]' ..
         'label[0,1;SSCSMs are currently ' ..
         minetest.formspec_escape(allowed) .. '.]'
 
