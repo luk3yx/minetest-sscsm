@@ -216,7 +216,7 @@ assert(base_env._raw.minetest.register_on_sending_chat_message ~=
 
 -- SSCSM functions
 -- When calling these from an SSCSM, make sure they exist first.
-local mod_channel = minetest.mod_channel_join('sscsm:exec_pipe')
+local mod_channel
 local loaded_sscsms = {}
 base_env:set('join_mod_channel', function()
     if not mod_channel then
@@ -269,29 +269,32 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
     end
 end)
 
--- Send "0"
-local function request_csms(c)
-    -- Don't request SSCSMs until TOSERVER_CLIENT_READY has been sent.
-    -- There is no callback for this, polling must be used instead.
-    if not minetest.localplayer then
-        minetest.after(0.05, request_csms, c)
+-- Send "0" when the "sscsm:exec_pipe" channel is first joined.
+local sent_request = false
+minetest.register_on_modchannel_signal(function(channel_name, signal)
+    if sent_request or channel_name ~= 'sscsm:exec_pipe' then
         return
     end
 
-    base_env._raw.minetest.localplayer = minetest.localplayer
-    base_env._raw.minetest.camera = minetest.camera
-    c = c or 10
-    if c <= 0 then
-        if mod_channel then
-            mod_channel:leave()
-            mod_channel = false
-        end
+    if signal == 0 then
+        base_env._raw.minetest.localplayer = minetest.localplayer
+        base_env._raw.minetest.camera = minetest.camera
+        mod_channel:send_all('0')
+        sent_request = true
+    elseif signal == 1 then
+        mod_channel:leave()
+        mod_channel = nil
+    end
+end)
+
+local function attempt_to_join_mod_channel()
+    -- Wait for minetest.localplayer to become available.
+    if not minetest.localplayer then
+        minetest.after(0.05, attempt_to_join_mod_channel)
         return
     end
-    if minetest.localplayer and mod_channel:is_writeable() then
-        mod_channel:send_all('0')
-    else
-        minetest.after(0.1, request_csms, c - 1)
-    end
+
+    -- Join the mod channel
+    mod_channel = minetest.mod_channel_join('sscsm:exec_pipe')
 end
-minetest.after(0, request_csms)
+minetest.after(0, attempt_to_join_mod_channel)
