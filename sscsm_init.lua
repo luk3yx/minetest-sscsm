@@ -246,6 +246,10 @@ end
 
 -- Detect messages and handle them
 minetest.register_on_receiving_chat_message(function(message)
+    if type(message) == 'table' then
+        message = message.message
+    end
+
     local chan, msg = message:match('^\001SSCSM_COM\001([^\001]*)\001(.*)$')
     if not chan or not msg then return end
 
