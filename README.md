@@ -81,8 +81,8 @@ relies on the SSCSM communication API described below.
 SSCSM provides an API inspired by
 [csm_com](https://github.com/DS-Minetest/csm_com) for sending private messages
 to clients. Unlike mod channels, only the target client gets these messages.
-The internal communication protocol is currently unstable and will probably
-change in a future release.
+Although the API is stable, the internal protocol will probably change in the
+future as better CSM API functions are added.
 
 *Note that channel names must not contain `\001`/U+0001.*
 
