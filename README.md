@@ -24,6 +24,8 @@ To create a SSCSM:
  - Install this mod onto a server.
  - Enable mod channels on the server (add `enable_mod_channels = true` to
      minetest.conf).
+ - Allow CSMs to send chat messages if you haven't already (add
+     `csm_restriction_flags = 60` to minetest.conf).
  - Create SSCSMs with the API.
  - Install the CSM (in the `csm/` directory) onto clients and enable it.
 
