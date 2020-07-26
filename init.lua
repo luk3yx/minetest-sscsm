@@ -318,7 +318,8 @@ minetest.after(0, function()
     if c ~= 2 then return end
 
     -- If not, enter testing mode.
-    minetest.log('warning', '[SSCSM] Testing mode enabled.')
+    minetest.log('warning', '[SSCSM] No mods are installed that are using ' ..
+        'SSCSM, loading example/testing code.')
 
     sscsm.register_on_sscsms_loaded(function(name)
         minetest.log('action', '[SSCSM] register_on_sscsms_loaded callback ' ..
@@ -336,9 +337,9 @@ minetest.after(0, function()
         depends = {'sscsm:testing_cmds'},
     })
 
-    sscsm.register({
-        name = 'sscsm:badtest',
-        code = 'error("Oops, badtest loaded!")',
-        depends = {':init', ':cleanup', 'bad_mod', ':bad2', 'bad3'},
-    })
+    --sscsm.register({
+    --    name = 'sscsm:badtest',
+    --    code = 'error("Oops, badtest loaded!")',
+    --    depends = {':init', ':cleanup', 'bad_mod', ':bad2', 'bad3'},
+    --})
 end)
