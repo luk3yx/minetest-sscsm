@@ -176,7 +176,7 @@ local flags = tonumber(minetest.settings:get('csm_restriction_flags'))
 if not flags or flags ~= flags then
     flags = 62
 end
-flags = math.floor(math.max(math.min(flags, 63), 0))
+flags = math.floor(math.max(flags, 0)) % 64
 
 do
     local def = sscsm.registered_csms[':init']
