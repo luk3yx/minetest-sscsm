@@ -64,7 +64,6 @@ function print(...)
     end
     minetest.log('none', msg)
 end
-print('Hello from the server-sent CSMs!')
 
 -- Add register_on_mods_loaded
 do
@@ -285,7 +284,6 @@ minetest.register_on_receiving_chat_message(function(message)
 end)
 
 sscsm.register_on_mods_loaded(function()
-    print('SSCSMs loaded, leaving mod channel.')
     sscsm.leave_mod_channel()
     sscsm.com_send('sscsm:com_test', {flags = sscsm.restriction_flags})
 end)
