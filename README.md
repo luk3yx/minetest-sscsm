@@ -130,6 +130,8 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
  - `sscsm.get_player_control()`: Alternative for
     `minetest.localplayer:get_control()` that works with Minetest 5.2.0 and
     below.
+    - The `LMB` and `RMB` fields are deprecated and will probably be removed in
+      the future, use `dig` and `place` instead.
  - `sscsm.every(interval, func, ...)`: Calls `func` every `interval` seconds
     with any extra parameters specified. Use `minetest.register_globalstep`
     instead if `interval` is `0`.
