@@ -152,6 +152,7 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
     server.
  - `sscsm.global_exists(name)`: Deprecated, use `minetest.global_exists(name)`
     instead.
+
 To communicate with the server-side mods, it is possible to open a mod
 channel.
 
