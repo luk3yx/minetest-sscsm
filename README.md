@@ -118,7 +118,6 @@ above this size limit it could still work.
 
 SSCSMs can access most functions on [client_lua_api.txt](https://github.com/minetest/minetest/blob/master/doc/client_lua_api.txt), as well as a separate `sscsm` namespace:
 
- - `sscsm.global_exists(name)`: The same as `minetest.global_exists`.
  - `sscsm.register_on_mods_loaded(callback)`: Runs the callback once all SSCSMs
     are loaded.
  - `sscsm.register_chatcommand(...)`: Similar to
@@ -151,7 +150,8 @@ SSCSMs can access most functions on [client_lua_api.txt](https://github.com/mine
  - `sscsm.register_on_com_receive(channel, function(msg))`: Registers a
     function to be called when a message on `channel` is received from the
     server.
-
+ - `sscsm.global_exists(name)`: Deprecated, use `minetest.global_exists(name)`
+    instead.
 To communicate with the server-side mods, it is possible to open a mod
 channel.
 
