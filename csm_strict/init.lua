@@ -49,8 +49,8 @@ do
 
     local show_formspec = minetest.show_formspec
     safe_funcs[show_formspec] = function(formname, ...)
-        if type(formname) == 'string' and formname:sub(1, 6) ~= 'sscsm:' then
-            return show_formspec(formname, ...)
+        if type(formname) == 'string' then
+            return show_formspec('sscsm:_' .. formname, ...)
         end
     end
 
@@ -62,8 +62,8 @@ do
     local on_fs_input = minetest.register_on_formspec_input
     safe_funcs[on_fs_input] = function(func)
         on_fs_input(function(formname, fields)
-            if formname:sub(1, 6) ~= 'sscsm:' then
-                pcall(func, formname, copy(fields))
+            if formname:sub(1, 7) == 'sscsm:_' then
+                pcall(func, formname:sub(8), copy(fields))
             end
         end)
     end
