@@ -3,7 +3,7 @@
 -- Initial code sent to the client
 --
 -- Copyright © 2019 by luk3yx
--- License: https://git.minetest.land/luk3yx/sscsm/src/branch/master/LICENSE.md
+-- License: https://luk3yx.mit-license.org/@2019
 --
 
 -- Make sure both table.unpack and unpack exist.
