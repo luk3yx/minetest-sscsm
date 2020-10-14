@@ -1,15 +1,15 @@
 --
 -- SSCSM: Server-Sent Client-Side Mods proof-of-concept: "Strict" version
 --
--- Copyright © 2019 by luk3yx
+-- Copyright © 2019-2020 by luk3yx
 --
 
--- For debugging, this can be a global variable.
-local sscsm = {}
+-- Spectre mitigations make measuring performance harder
+local ENABLE_SPECTRE_MITIGATIONS = true
 
 -- Add a random number onto the current time in case servers try and predict
 --  the random seed
-math.randomseed(os.time() + math.random(2, 1200))
+math.randomseed(os.time() + math.random())
 
 local storage = minetest.get_mod_storage()
 
@@ -73,6 +73,13 @@ do
         return deserialize(str, true)
     end
 
+    if ENABLE_SPECTRE_MITIGATIONS then
+        local get_us_time, floor = minetest.get_us_time, math.floor
+        safe_funcs[get_us_time] = function()
+            return floor(get_us_time() / 100) * 100
+        end
+    end
+
     local wrap = function(n)
         local orig = minetest[n] or minetest[n .. 's']
         if type(orig) == 'function' then
@@ -107,7 +114,7 @@ function Env.new_empty()
     self._raw['_G'] = self._raw
     return setmetatable(self, {__index = Env}) or self
 end
-function Env:get(k) return self._raw[self._seen[k] or k] end
+-- function Env:get(k) return self._raw[self._seen[k] or k] end
 function Env:set(k, v) self._raw[copy(k, self._seen)] = copy(v, self._seen) end
 function Env:set_copy(k, v)
     self:set(k, v)
@@ -129,11 +136,11 @@ function Env:del(k)
     self._raw[k] = nil
 end
 
-function Env:copy()
-    local new = {_seen = copy(safe_funcs)}
-    new._raw = copy(self._raw, new._seen)
-    return setmetatable(new, {__index = Env}) or new
-end
+-- function Env:copy()
+--     local new = {_seen = copy(safe_funcs)}
+--     new._raw = copy(self._raw, new._seen)
+--     return setmetatable(new, {__index = Env}) or new
+-- end
 
 -- Load code into a callable function.
 function Env:loadstring(code, file)
@@ -142,11 +149,11 @@ function Env:loadstring(code, file)
     if not f then return nil, msg end
     setfenv(f, self._raw)
     return function(...)
-        local good, msg = pcall(f, ...)
+        local good, res = pcall(f, ...)
         if good then
-            return msg
+            return res
         else
-            minetest.log('error', '[SSCSM] ' .. tostring(msg))
+            minetest.log('error', '[SSCSM] ' .. tostring(res))
         end
     end
 end
@@ -161,23 +168,21 @@ function Env:exec(code, file)
     return true
 end
 
--- Create the "base" environment
-local base_env = Env:new_empty()
-function Env.new() return base_env:copy() end
+-- Create the environment
+local env = Env:new_empty()
 
 -- Clone everything
-base_env:add_globals('assert', 'dump', 'dump2', 'error', 'ipairs', 'math',
+env:add_globals('assert', 'dump', 'dump2', 'error', 'ipairs', 'math',
     'next', 'pairs', 'pcall', 'select', 'setmetatable', 'string', 'table',
     'tonumber', 'tostring', 'type', 'vector', 'xpcall', '_VERSION')
 
-base_env:set_copy('os', {clock = os.clock, difftime = os.difftime,
-    time = os.time})
+env:set_copy('os', {clock = os.clock, difftime = os.difftime, time = os.time})
 
 -- Create a slightly locked down "minetest" table
 do
     local t = {}
     for _, k in ipairs({"add_particle", "add_particlespawner", "after",
-            "camera", "clear_out_chat_queue", "colorize", "compress", "debug",
+            "clear_out_chat_queue", "colorize", "compress", "debug",
             "decode_base64", "decompress", "delete_particlespawner",
             "deserialize", "disconnect", "display_chat_message",
             "encode_base64", "explode_scrollbar_event", "explode_table_event",
@@ -190,7 +195,7 @@ do
             "get_player_names", "get_privilege_list", "get_server_info",
             "get_timeofday", "get_translator", "get_us_time", "get_version",
             "get_wielded_item", "gettext", "is_nan", "is_yes", "line_of_sight",
-            "localplayer", "log", "mod_channel_join", "parse_json",
+            "log", "mod_channel_join", "parse_json",
             "pointed_thing_to_face_pos", "pos_to_string", "privs_to_string",
             "raycast", "register_globalstep", "register_on_damage_taken",
             "register_on_death", "register_on_dignode",
@@ -204,29 +209,29 @@ do
             "serialize", "sha1", "show_formspec", "sound_play", "sound_stop",
             "string_to_area", "string_to_pos", "string_to_privs",
             "strip_background_colors", "strip_colors",
-            "strip_foreground_colors", "translate", "ui", "wrap_text",
+            "strip_foreground_colors", "translate", "wrap_text",
             "write_json"}) do
         local func = minetest[k]
         t[k] = safe_funcs[func] or func
     end
 
-    base_env:set_copy('minetest', t)
+    env:set_copy('minetest', t)
 end
 
 -- Add table.unpack
 if not table.unpack then
-    base_env._raw.table.unpack = unpack
+    env._raw.table.unpack = unpack
 end
 
 -- Make sure copy() worked correctly
-assert(base_env._raw.minetest.register_on_sending_chat_message ~=
+assert(env._raw.minetest.register_on_sending_chat_message ~=
     minetest.register_on_sending_chat_message, 'Error in copy()!')
 
 -- SSCSM functions
 -- When calling these from an SSCSM, make sure they exist first.
 local mod_channel
 local loaded_sscsms = {}
-base_env:set('join_mod_channel', function()
+env:set('join_mod_channel', function()
     if not mod_channel then
         mod_channel = minetest.mod_channel_join('sscsm:exec_pipe')
     end
@@ -238,10 +243,7 @@ local function leave_mod_channel()
         mod_channel = false
     end
 end
-base_env:set('leave_mod_channel', leave_mod_channel)
-
--- Allow other CSMs to access the new Environment type
-sscsm.Env = Env
+env:set('leave_mod_channel', leave_mod_channel)
 
 -- Get the address
 local get_address
@@ -262,9 +264,9 @@ do
 end
 
 -- Get trusted SSCSMs
-local trust, trustdb
+local trust, trustdb, allowed
 local function is_sscsm_trusted(name, code)
-    if sscsm.allowed or trust then return true end
+    if allowed or trust then return true end
 
     -- Don't return false if trust is nil.
     if trust == false then return false end
@@ -290,6 +292,7 @@ end
 
 -- exec() code sent by the server.
 local sscsm_queue = {}
+local sscsms_running = false
 
 minetest.register_on_modchannel_message(function(channel_name, sender, message)
     if channel_name ~= 'sscsm:exec_pipe' or (sender and sender ~= '')
@@ -307,7 +310,7 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
         local target = message:sub(2, s - 1)
         if target ~= minetest.localplayer:get_name() then return end
         message = message:sub(e + 1)
-        local s, e = message:find('\n')
+        s, e = message:find('\n')
         if not s or not e then return end
         name = message:sub(1, s - 1)
         code = message:sub(e + 1)
@@ -318,26 +321,26 @@ minetest.register_on_modchannel_message(function(channel_name, sender, message)
     -- Don't load the same SSCSM twice
     if not loaded_sscsms[name] then
         loaded_sscsms[name] = true
-        if sscsm.allowed or is_sscsm_trusted(name, code) then
+        if allowed or is_sscsm_trusted(name, code) then
             -- Create the environment
             minetest.log('action', '[SSCSM] Loading ' .. name)
-            if not sscsm.env then sscsm.env = Env:new() end
-            sscsm.env:exec(code, name)
+            sscsms_running = true
+            env:exec(code, name)
         elseif sscsm_queue then
-            if sscsm.allowed == nil then
+            if allowed == nil then
                 local a = get_address()
                 minetest.display_chat_message(minetest.colorize('#eeeeee',
                     '[SSCSM] This server (' .. minetest.formspec_escape(a) ..
                     ') wants to run sandboxed code on your client. ' ..
                     'Run .sscsm to allow or deny this.'))
-                if sscsm.env then
+                if sscsms_running then
                     minetest.display_chat_message(minetest.colorize('yellow',
                         '[SSCSM] WARNING: New SSCSMs have been added or '
                         .. 'modified since you last trusted this server. '
                         .. 'SSCSMs are in a partially loaded state, '
                         .. 'please run .sscsm and fix this.'))
                 end
-                sscsm.allowed = false
+                allowed = false
             end
             table.insert(sscsm_queue, {name=name, code=code})
         end
@@ -352,8 +355,9 @@ minetest.register_on_modchannel_signal(function(channel_name, signal)
     end
 
     if signal == 0 then
-        base_env._raw.minetest.localplayer = minetest.localplayer
-        base_env._raw.minetest.camera = minetest.camera
+        env._raw.minetest.localplayer = minetest.localplayer
+        env._raw.minetest.camera = minetest.camera
+        env._raw.minetest.ui = table.copy(minetest.ui)
         mod_channel:send_all('0')
         sent_request = true
     elseif signal == 1 then
@@ -399,23 +403,23 @@ end
 local allow_id, deny_id, inspect_id, checkbox_id
 local function show_default_formspec()
     leave_mod_channel()
-    local allow_text, deny_text, allowed
-    if sscsm.allowed or (sscsm.env and sscsm_queue and #sscsm_queue == 0) then
+    local allow_text, deny_text, allowed_msg
+    if allowed or (sscsms_running and sscsm_queue and #sscsm_queue == 0) then
         deny_text  = 'Exit to menu'
         allow_text = 'Close dialog'
-        allowed = minetest.colorize('orange', 'running')
+        allowed_msg = minetest.colorize('orange', 'running')
     elseif sscsm_queue then
         allow_text = 'Allow'
 
-        if sscsm.env then
-            allowed = minetest.colorize('red', 'partially running')
+        if sscsms_running then
+            allowed_msg = minetest.colorize('red', 'partially running')
             deny_text = 'Exit to menu'
         else
-            allowed = 'inactive'
+            allowed_msg = 'inactive'
             deny_text = 'Deny'
         end
     else
-        allowed = minetest.colorize('lightgreen', 'disabled')
+        allowed_msg = minetest.colorize('lightgreen', 'disabled')
     end
 
     -- Randomly generate identifiers
@@ -428,7 +432,7 @@ local function show_default_formspec()
     local formspec = 'size[8,4]no_prepend[]' ..
         'image_button[0,0;8,1;blank.png;ignore;SSCSM;true;false;]' ..
         'label[0,1;SSCSMs are currently ' ..
-        minetest.formspec_escape(allowed) .. '.]'
+        minetest.formspec_escape(allowed_msg) .. '.]'
 
     if allow_text == 'Allow' then
         inspect_id = allow_id
@@ -446,9 +450,10 @@ local function show_default_formspec()
             'label[0,1.5;You cannot change this without reconnecting.]'
     end
 
-    if sscsm.allowed or sscsm_queue then
+    if allowed or sscsm_queue then
         local tr = trust
-        if tr == nil and sscsm.env and sscsm_queue and #sscsm_queue == 0 then
+        if tr == nil and sscsms_running and sscsm_queue and
+                #sscsm_queue == 0 then
             tr = true
         end
 
@@ -552,7 +557,7 @@ minetest.register_on_formspec_input(function(formname, fields)
 
         show_inspect_formspec()
     elseif fields[deny_id] then
-        if sscsm.allowed or sscsm.env then
+        if allowed or sscsms_running then
             minetest.disconnect()
         end
         if sscsm_queue then
@@ -561,20 +566,20 @@ minetest.register_on_formspec_input(function(formname, fields)
             storage:set_string('trust-' .. get_address(), '')
         end
     elseif fields[allow_id] then
-        if sscsm.allowed or (sscsm_queue and #sscsm_queue == 0) then
+        if allowed or (sscsm_queue and #sscsm_queue == 0) then
             return true
         end
 
         minetest.display_chat_message('[SSCSM] SSCSMs have been allowed.')
-        sscsm.allowed = true
+        allowed = true
         if sscsm_queue then
-            if not sscsm.env then sscsm.env = Env:new() end
+            sscsms_running = true
             local mods
             if trust then mods = {} end
             for _, def in ipairs(sscsm_queue) do
                 minetest.log('action', '[SSCSM] Loading ' .. def.name)
                 if mods then mods[def.name] = def.code end
-                sscsm.env:exec(def.code, def.name)
+                env:exec(def.code, def.name)
             end
             if mods then
                 storage:set_string('trust-' .. get_address(),
@@ -604,8 +609,8 @@ end)
 -- Add .sscsm
 minetest.register_chatcommand('sscsm', {
     descrption = 'Displays SSCSM options for this server.',
-    func = function(param)
-        if sscsm.allowed == nil and not sscsm.env then
+    func = function(_)
+        if allowed == nil and not sscsms_running then
             return false, 'This server has not attempted to load any SSCSMs.'
         else
             show_default_formspec()
