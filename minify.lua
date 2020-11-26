@@ -65,7 +65,7 @@ local matches = {
 
         -- Handle backslashes
         repeat
-            local s, e, pattern = find_multiple(code, '\\', char)
+            local _, e, pattern = find_multiple(code, '\\', char)
             if pattern == char then
                 res = res .. code:sub(1, e)
                 code = code:sub(e + 1)
