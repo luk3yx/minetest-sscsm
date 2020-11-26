@@ -51,13 +51,15 @@ local function recalc_csm_order()
     local unsatisfied = {}
     for name, def in pairs(sscsm.registered_csms) do
         assert(name == def.name)
-        if not def.depends or #def.depends == 0 then
-            table.insert(staging, name)
-        else
-            unsatisfied[name] = {}
-            for _, mod in ipairs(def.depends) do
-                if mod:sub(1, 1) ~= ':' then
-                    unsatisfied[name][mod] = true
+        if name:sub(1, 1) ~= ':' then
+            if not def.depends or #def.depends == 0 then
+                table.insert(staging, name)
+            else
+                unsatisfied[name] = {}
+                for _, mod in ipairs(def.depends) do
+                    if mod:sub(1, 1) ~= ':' then
+                        unsatisfied[name][mod] = true
+                    end
                 end
             end
         end
