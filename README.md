@@ -1,5 +1,7 @@
 # Minetest server-sent CSM proof-of-concept
 
+[![Build status](https://github.com/luk3yx/minetest-sscsm/workflows/build/badge.svg)](https://github.com/luk3yx/minetest-sscsm/actions)
+
 [Source](https://git.minetest.land/luk3yx/sscsm)
 
 Attempts to run server-sent CSMs locally in a sandbox.
