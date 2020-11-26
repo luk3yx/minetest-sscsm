@@ -59,22 +59,20 @@ local csm_order = false
 -- Recalculate the CSM loading order
 -- TODO: Make this nicer
 local function recalc_csm_order()
-    local loaded = {}
     local staging = {}
     local order = {':init'}
     local unsatisfied = {}
     for name, def in pairs(sscsm.registered_csms) do
         assert(name == def.name)
-        if name:sub(1, 1) == ':' then
-            loaded[name] = true
-        elseif not def.depends or #def.depends == 0 then
-            loaded[name] = true
-            table.insert(staging, name)
-        else
-            unsatisfied[name] = {}
-            for _, mod in ipairs(def.depends) do
-                if mod:sub(1, 1) ~= ':' then
-                    unsatisfied[name][mod] = true
+        if name:sub(1, 1) ~= ':' then
+            if not def.depends or #def.depends == 0 then
+                table.insert(staging, name)
+            else
+                unsatisfied[name] = {}
+                for _, mod in ipairs(def.depends) do
+                    if mod:sub(1, 1) ~= ':' then
+                        unsatisfied[name][mod] = true
+                    end
                 end
             end
         end

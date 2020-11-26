@@ -264,8 +264,8 @@ local function load_split_message(chan, msg)
 
     -- Return true if all the messages have been received
     if #msgs < l then return end
-    for i = 1, l do
-        if not msgs[i] then
+    for count = 1, l do
+        if not msgs[count] then
             return
         end
     end
@@ -305,9 +305,9 @@ minetest.register_on_receiving_chat_message(function(message)
 
     -- Run callbacks
     for _, func in ipairs(callbacks) do
-        local ok, msg = pcall(func, msg)
+        local ok, text = pcall(func, msg)
         if not ok then
-            minetest.log('error', '[SSCSM] ' .. tostring(msg))
+            minetest.log('error', '[SSCSM] ' .. tostring(text))
         end
     end
     return true
